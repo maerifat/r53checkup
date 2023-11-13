@@ -12,6 +12,7 @@ import ipaddress
 import dns.resolver #pip3 install dnspython
 
 
+
 def main():
 
     banner="""
@@ -35,8 +36,8 @@ def main():
                  @%               ##                  
                    @*%         %-%                    
                       %%%@@@%%%          
-                                    Identify risky assets in AWS Route53 !
-                                                v 1.2.29
+                                    Know the health of DNS records in AWS Route53 !
+                                                   v 1.2.31
                                     
                                                                                                     
     """
@@ -92,6 +93,13 @@ def main():
     parser.add_argument(
         '-cd',
         '--check-dangling',
+        action='store_true',
+        help='Checks if the DNS record is dangling.'
+    )
+
+    parser.add_argument(
+        '-cc',
+        '--check-cert',
         action='store_true',
         help='Checks if the DNS record is dangling.'
     )
@@ -197,6 +205,8 @@ def main():
                 return "Time Out"
             except dns.resolver.NoAnswer:
                 return "No Answwer"
+            except Exception as e:
+                return e
         else: 
             return "NA"
         
@@ -239,6 +249,7 @@ def main():
             except sso_oidc.exceptions.ExpiredTokenException:
                 print_event("\r[+] Token Expired!. Program is being terminated...          ","red",on_color=None,attrs=["bold"])
                 exit()
+
             except sso_oidc.exceptions.AuthorizationPendingException:
                 if not args.no_verbose:
                     if n==1:
