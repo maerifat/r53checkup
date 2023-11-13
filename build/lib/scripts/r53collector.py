@@ -10,7 +10,6 @@ import openpyxl
 from openpyxl.styles import Font,PatternFill
 import ipaddress
 import dns.resolver #pip3 install dnspython
-import markdown2
 
 
 
@@ -20,7 +19,7 @@ def main():
 
 
     #Argument parsing
-    parser = argparse.ArgumentParser(description='Route53 Record Collector v-1.2.27')
+    parser = argparse.ArgumentParser(description='Route53 Record Collector v-1.2.28')
 
     parser.add_argument(
         '-u',

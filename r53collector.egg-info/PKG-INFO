@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: r53collector
-Version: 1.2.27
+Version: 1.2.28
 Summary: Collect all route53 records distributed across yours accounts in aws org.
 Home-page: UNKNOWN
 Author: maerifat (Maerifat Majeed)

@@ -10,17 +10,41 @@ import openpyxl
 from openpyxl.styles import Font,PatternFill
 import ipaddress
 import dns.resolver #pip3 install dnspython
-import markdown2
-
-
-
 
 
 def main():
 
+    banner="""
+                             __         __                                        
+                         :.#-::         -::==-=       
+                        -                      #   
+      ┳┓       ┏━┏┓    -                        :
+      ┣┫┏┓┓┏╋┏┓┗┓ ┫    =                        :
+      ┛┗┗┛┗┻┗┗ ┗┛┗┛     #                     -  
+                          #                  +        
+          +:=%::-          -                -=        
+         ++*##%#:-         %-               +         
+         =#%-  %+=          %              %          
+          -##*=#+           +%            %%          
+             --              %# -      -  =           
+             *%               %%         %%           
+              #=               %#       %%            
+              @%                  %%%%%%              
+               #                    %                 
+               +%                  %%                 
+                 @%               ##                  
+                   @*%         %-%                    
+                      %%%@@@%%%          
+                                    Identify risky assets in AWS Route53 !
+                                    
+                                                                                                    
+    """
 
-    #Argument parsing
-    parser = argparse.ArgumentParser(description='Route53 Record Collector v-1.2.27')
+    cprint(banner,"cyan",attrs=['bold'], file=sys.stderr)
+    
+
+      #Argument parsing
+    parser = argparse.ArgumentParser(description='Identify risky assets in AWS Route53 with r53checkup v-1.2.28')
 
     parser.add_argument(
         '-u',
@@ -98,10 +122,8 @@ def main():
         '-nv',
         '--no-verbose',
         action='store_true',
-        help='Disable verbose to get details.'
+        help='Disable verbose.'
     )
-
-
 
     args = parser.parse_args()
 
@@ -120,12 +142,12 @@ def main():
                 return False
 
     def print_event(eventmsg,color,on_color,*extraargs,**extrapairs):
+        
         if not args.no_verbose:
             if not args.no_color:
                 cprint(eventmsg,color,on_color,*extraargs,**extrapairs)
             else:
                 cprint(eventmsg,None,None,*extraargs,**extrapairs)
-
 
     def is_text():
         if args.output:
@@ -301,14 +323,7 @@ def main():
         sheet.column_dimensions['F'].width = 12
         sheet.column_dimensions['G'].width = 70
 
-
-
     session =Session()
-
-
-
-
-
 
     ###Skeleton Creation###
 
@@ -346,8 +361,6 @@ def main():
         cprint(f"The program has been terminated because of {e}", "red", attrs=["bold"], file=sys.stderr)
         exit()
         
-
-    
     print_event(f"[+] Device authorization has been initiated through browser.","yellow",on_color=None)
     print_event(f"[+] Please authorize only if {device_authorization['userCode']} matches the code on your browser screen.","yellow",on_color=None,attrs=["bold"],end='',flush=True)
 
@@ -361,7 +374,6 @@ def main():
 
     webbrowser.open(url, autoraise=True)
    
-
     #Wait until authorization
     authwait()
 
@@ -390,7 +402,6 @@ def main():
 
     combined_subdomains = set()
 
-
     #Iterate through accounts
 
     for account_id in account_list:
@@ -404,10 +415,9 @@ def main():
         try:
             roleNames
         except:
-            print_event(f"You have No roles assigned for {account_id}.","yellow",None)
+            print_event(f"You have No roles assigned for {account_id}.","yellow",None,)
             pass
 
-        
         #Get credentials for each account
         for role_Name in roleNames:
             try:
@@ -452,13 +462,13 @@ def main():
         else:
             cprint(f"    {subdomain}", "light_cyan",on_color=None)
         
-    if is_text():
+    if is_text() and combined_subdomains:
         with open(file_location(),'w') as textfile:
             for subdomain in combined_subdomains:
                 textfile.write(subdomain+'\n')
         print_event(f"\n[+] All subdomains have been saved in text format in {file_location()}","yellow",on_color=None)
 
-    if is_excel():
+    if is_excel() and combined_subdomains:
 
         header_font = Font(color="FFFFFF", bold=True)  # White bold font
         header_fill = PatternFill(start_color="000080", end_color="000080", fill_type="solid")  # Blue background
@@ -474,6 +484,9 @@ def main():
                     cell.font = Font(color="FF0000")  # Red font color
         workbook.save(file_location())
         print_event(f"\n[+] All data has been saved in excel format in {file_location()}","yellow",on_color=None)
+
+    if not combined_subdomains:
+        print_event("No records found !","red",None)
 
 if __name__=='__main__':
     main()
