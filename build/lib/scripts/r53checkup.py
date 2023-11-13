@@ -196,14 +196,14 @@ def main():
     def is_dangling(dns_value):
         if record['Type'] == 'CNAME' or is_alias:
             try:
-                result = dns.resolver.resolve(dns_value)
+                result = dnsx.resolver.resolve(dns_value)
                 if result:
                     return "No"
-            except dns.resolver.NXDOMAIN:
+            except dnsx.resolver.NXDOMAIN:
                 return "Yes"
-            except dns.resolver.Timeout:
+            except dnsx.resolver.Timeout:
                 return "Time Out"
-            except dns.resolver.NoAnswer:
+            except dnsx.resolver.NoAnswer:
                 return "No Answwer"
             except Exception as e:
                 return e

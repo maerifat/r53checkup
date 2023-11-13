@@ -11,11 +11,10 @@ def check_certificate(host, port=443):
 
     # Check validity period
     current_date = datetime.datetime.utcnow()
-    print(current_date)
+
     not_before = datetime.datetime.strptime(cert['notBefore'], "%b %d %H:%M:%S %Y %Z")
     not_after = datetime.datetime.strptime(cert['notAfter'], "%b %d %H:%M:%S %Y %Z")
-    print(not_before)
-    print(cert['notBefore'])
+
 
     
 
@@ -37,7 +36,7 @@ def check_certificate(host, port=443):
         print(f"CN or SAN does not match the host: {host}")
 
 # Example usage
-host_to_check = "google.com"
+host_to_check = "facebook.com"
 port_to_check = 443
 
 check_certificate(host_to_check, port_to_check)

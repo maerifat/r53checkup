@@ -212,9 +212,9 @@ def main():
         
     def append_row_to_sheet():
         if args.check_dangling:
-            sheet_row=[account_id,zone_name,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value()]
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value()]
         else:
-            sheet_row=[account_id,zone_name,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value()]
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value()]
         sheet.append(sheet_row)
 
    #Function to iterate and check if authorization is complete
@@ -314,6 +314,18 @@ def main():
 
         return subdomains
     
+    def get_dnssec(zone_id):
+        try:
+            dnssec_response= route53.get_dnssec(
+                HostedZoneId=zone_id
+            )
+            
+            dnssec_status_value=dnssec_response['Status']['ServeSignature']
+            print_event(f"Status of DNSSEC is {dnssec_status_value} for zone {zone_name}","yellow",None)
+            return dnssec_status_value
+        except:
+            return "Error"
+    
 
     if args.list:
         args.no_verbose=True
@@ -323,17 +335,18 @@ def main():
         workbook = openpyxl.Workbook()
         sheet=workbook.active
         if args.check_dangling:
-            sheet_headers= ['Account_Id', 'Zone_Name','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value']
+            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value']
         else:
-            sheet_headers= ['Account_Id', 'Zone_Name','Record_Name', 'Record_Type','Is_Alias','Record_Value']
+            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Record_Value']
         sheet.append(sheet_headers)
         sheet.column_dimensions['A'].width = 15
         sheet.column_dimensions['B'].width = 30
-        sheet.column_dimensions['C'].width = 40
-        sheet.column_dimensions['D'].width = 12
+        sheet.column_dimensions['C'].width = 15
+        sheet.column_dimensions['D'].width = 40
         sheet.column_dimensions['E'].width = 12
         sheet.column_dimensions['F'].width = 12
-        sheet.column_dimensions['G'].width = 70
+        sheet.column_dimensions['G'].width = 12
+        sheet.column_dimensions['H'].width = 70
 
     session =Session()
 
@@ -459,6 +472,7 @@ def main():
                         print_event("","green",on_color=None)
                         print_event(f"[+] Route53 DNS records in ZoneName {zone_name}:","yellow","on_light_blue")
                         print_event("","green",on_color=None)
+                        dnssec_status = get_dnssec(zone_id)
                         subdomains = get_subdomains(zone_id)
                 print_event("","green",on_color=None)
                 print_event("","green",on_color=None)
