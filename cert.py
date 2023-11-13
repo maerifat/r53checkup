@@ -1,7 +1,6 @@
 import ssl
 import socket
 import datetime
-
 def check_certificate(host, port=443):
     # Connect to the server and retrieve the SSL/TLS certificate
     context = ssl.create_default_context()
