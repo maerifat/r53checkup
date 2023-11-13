@@ -10,32 +10,17 @@ import openpyxl
 from openpyxl.styles import Font,PatternFill
 import ipaddress
 import dns.resolver #pip3 install dnspython
+import markdown2
+
+
+
+
 
 def main():
-    def is_ip(text):
-        try:
-            ipaddress.IPv4Address(text)  
-            return True
-        except ipaddress.AddressValueError:
-            try:
-                ipaddress.IPv6Address(text) 
-                return True
-            except ipaddress.AddressValueError:
-                return False
 
-    def print_event(eventmsg,color,on_color,*extraargs,**extrapairs):
-        if not args.no_verbose:
-            if not args.no_color:
-                cprint(eventmsg,color,on_color,*extraargs,**extrapairs)
-            else:
-                cprint(eventmsg,None,None,*extraargs,**extrapairs)
-
-
-    def comma_separated_values(values):
-        return values.split(',')
 
     #Argument parsing
-    parser = argparse.ArgumentParser(description='Route53 Record Collector v-1.2.26')
+    parser = argparse.ArgumentParser(description='Route53 Record Collector v-1.2.27')
 
     parser.add_argument(
         '-u',
@@ -50,7 +35,7 @@ def main():
         '-a',
         '--accounts',
         metavar='account_id',
-        type=comma_separated_values,
+        type=lambda values: values.split(','),
         help='multiple account_ids separated with comma. eg. 122389992,31313313,31313133'
     )
 
@@ -62,32 +47,12 @@ def main():
         help='Region name. eg. us-east-1'
     )
 
-    parser.add_argument(
-        '-nv',
-        '--no-verbose',
-        action='store_true',
-        help='Enable verbose to get details.'
-    )
-
-    parser.add_argument(
-        '-l',
-        '--list',
-        action='store_true',
-        help='List all subdomains, without any verbose.'
-    )
-
-    parser.add_argument(
-        '-nc',
-        '--no-color',
-        action='store_true',
-        help='Color less standard output.'
-    )
 
     parser.add_argument(
         '-t',
         '--types',
         metavar='record_type',
-        type=comma_separated_values,
+        type=lambda values: values.split(','),
         help='DNS record types separated with comma. eg. a,cname'
     )
 
@@ -114,7 +79,53 @@ def main():
         help='File name to save as, file type is recognised from the extension. eg subdomains.xlsx'
     )
 
+
+    parser.add_argument(
+        '-l',
+        '--list',
+        action='store_true',
+        help='List all subdomains, without any verbose.'
+    )
+    parser.add_argument(
+        '-nc',
+        '--no-color',
+        action='store_true',
+        help='Color less standard output.'
+    )
+
+
+    parser.add_argument(
+        '-nv',
+        '--no-verbose',
+        action='store_true',
+        help='Disable verbose to get details.'
+    )
+
+
+
     args = parser.parse_args()
+
+
+#Some important functions
+
+    def is_ip(text):
+        try:
+            ipaddress.IPv4Address(text)  
+            return True
+        except ipaddress.AddressValueError:
+            try:
+                ipaddress.IPv6Address(text) 
+                return True
+            except ipaddress.AddressValueError:
+                return False
+
+    def print_event(eventmsg,color,on_color,*extraargs,**extrapairs):
+        if not args.no_verbose:
+            if not args.no_color:
+                cprint(eventmsg,color,on_color,*extraargs,**extrapairs)
+            else:
+                cprint(eventmsg,None,None,*extraargs,**extrapairs)
+
 
     def is_text():
         if args.output:
@@ -132,23 +143,7 @@ def main():
         if args.output:
             filelocation=args.output
             return filelocation
-
-    if is_excel():
-        workbook = openpyxl.Workbook()
-        sheet=workbook.active
-        if args.check_dangling:
-            sheet_headers= ['Account_Id', 'Zone_Name','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value']
-        else:
-            sheet_headers= ['Account_Id', 'Zone_Name','Record_Name', 'Record_Type','Is_Alias','Record_Value']
-        sheet.append(sheet_headers)
-        sheet.column_dimensions['A'].width = 15
-        sheet.column_dimensions['B'].width = 30
-        sheet.column_dimensions['C'].width = 40
-        sheet.column_dimensions['D'].width = 12
-        sheet.column_dimensions['E'].width = 12
-        sheet.column_dimensions['F'].width = 12
-        sheet.column_dimensions['G'].width = 70
-
+        
     def get_dns_value():
         global dns_value
         global is_alias
@@ -165,6 +160,7 @@ def main():
         else:
             dns_value="dnsvalueerror2"
         return dns_value
+    
 
     def is_dangling(dns_value):
         if record['Type'] == 'CNAME' or is_alias:
@@ -180,7 +176,7 @@ def main():
                 return "No Answwer"
         else: 
             return "NA"
-
+        
     def append_row_to_sheet():
         if args.check_dangling:
             sheet_row=[account_id,zone_name,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value()]
@@ -188,63 +184,7 @@ def main():
             sheet_row=[account_id,zone_name,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value()]
         sheet.append(sheet_row)
 
-    if args.list:
-        args.no_verbose=True
-
-    session =Session()
-
-    ###Skeleton Creation###
-
-    #Input details
-    start_url = args.start_url
-
-    if args.region:
-        region = args.region
-    else:
-        region = 'us-east-1'
-
-    #OIDC Connection
-    try: 
-        sso_oidc = session.client('sso-oidc')
-        client_creds = sso_oidc.register_client(
-            clientName='r53collector',
-            clientType='public',
-        )
-
-    except Exception as e:
-        cprint(f"The program has been terminated because of {e}", "red", attrs=["bold"], file=sys.stderr)
-        exit()
-        
-    if client_creds:
-        print_event("[+] Client credentials fetched Succussfully.",color="yellow",on_color=None)
-
-    #Device Authorization initiation
-    try:
-        device_authorization = sso_oidc.start_device_authorization(
-            clientId=client_creds['clientId'],
-            clientSecret=client_creds['clientSecret'],
-            startUrl=start_url,
-        )
-    except Exception as e:
-        cprint(f"The program has been terminated because of {e}", "red", attrs=["bold"], file=sys.stderr)
-        exit()
-        
-
-    
-    print_event(f"[+] Device authorization has been initiated through browser.","yellow",on_color=None)
-    print_event(f"[+] Please authorize only if {device_authorization['userCode']} matches the code on your browser screen.","yellow",on_color=None,attrs=["bold"],end='',flush=True)
-
-    #Browser Authorization 
-    url = device_authorization['verificationUriComplete']
-    device_code = device_authorization['deviceCode']
-    expires_in = device_authorization['expiresIn']
-    interval = device_authorization['interval']
-    sleep(10)
-    print_event(f"\r[+] Please authorize only if ********* matches the code on your browser screen.","yellow",on_color=None)
-
-    webbrowser.open(url, autoraise=True)
-   
-    #Function to iterate and check if authorization is complete
+   #Function to iterate and check if authorization is complete
     def authwait():
         for n in range(1, expires_in // (interval+3) + 1):
             try:
@@ -266,13 +206,15 @@ def main():
                 else:
                     print_event(f"[+] Authorization Successful in first attempt.","green",on_color=None)
 
-
                 break
             except sso_oidc.exceptions.UnauthorizedClientException:
                 print_event("\r[+] Unauthorized Access!. Program is being terminated...          ","red",attrs=["bold"])
                 exit()
             except sso_oidc.exceptions.AccessDeniedException:
                 print_event("\r[+] ACCESS DENIED!. Program is being terminated...          ","red",on_color=None,attrs=["bold"])
+                exit()
+            except sso_oidc.exceptions.ExpiredTokenException:
+                print_event("\r[+] Token Expired!. Program is being terminated...          ","red",on_color=None,attrs=["bold"])
                 exit()
             except sso_oidc.exceptions.AuthorizationPendingException:
                 if not args.no_verbose:
@@ -282,33 +224,6 @@ def main():
                         print_event("\rDevice yet to be authorized in browser, waiting...",color="red",on_color=None,attrs=["blink"],end='', flush=True)
                 pass
 
-    #Wait until authorization
-    authwait()
-
-    try:
-        token
-    except NameError:
-        print_event("\r[+] Session Expired. Program is being terminated...          ","red",on_color=None,attrs=["bold"])
-        exit()
-
-    access_token = token['accessToken']
-    sso = session.client('sso')
-    account_list_raw = sso.list_accounts(
-        accessToken=access_token,
-        maxResults=1000  
-    )
-    ####Skeleton Completed####
-
-    #Fetch all accessible accounts otherwise give list
-    if args.accounts:
-        account_list= args.accounts
-    else:
-        account_list =  [account['accountId'] for account in account_list_raw['accountList']]
-
-    print_event(f'[+] Total accounts: {len(account_list)}','yellow',on_color=None)
-    print_event(f"    {account_list}\n\n","cyan",on_color=None)
-
-    combined_subdomains = set()
 
     def get_subdomains(zone_id):
         subdomains= []
@@ -364,6 +279,118 @@ def main():
             print(f"Failed to get subdomains for zone {zone_id}: {e}")
 
         return subdomains
+    
+
+    if args.list:
+        args.no_verbose=True
+        
+
+    if is_excel():
+        workbook = openpyxl.Workbook()
+        sheet=workbook.active
+        if args.check_dangling:
+            sheet_headers= ['Account_Id', 'Zone_Name','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value']
+        else:
+            sheet_headers= ['Account_Id', 'Zone_Name','Record_Name', 'Record_Type','Is_Alias','Record_Value']
+        sheet.append(sheet_headers)
+        sheet.column_dimensions['A'].width = 15
+        sheet.column_dimensions['B'].width = 30
+        sheet.column_dimensions['C'].width = 40
+        sheet.column_dimensions['D'].width = 12
+        sheet.column_dimensions['E'].width = 12
+        sheet.column_dimensions['F'].width = 12
+        sheet.column_dimensions['G'].width = 70
+
+
+
+    session =Session()
+
+
+
+
+
+
+    ###Skeleton Creation###
+
+    #Input details
+    start_url = args.start_url
+
+    if args.region:
+        region = args.region
+    else:
+        region = 'us-east-1'
+
+    #OIDC Connection
+    try: 
+        sso_oidc = session.client('sso-oidc')
+        client_creds = sso_oidc.register_client(
+            clientName='r53collector',
+            clientType='public',
+        )
+
+    except Exception as e:
+        cprint(f"The program has been terminated because of {e}", "red", attrs=["bold"], file=sys.stderr)
+        exit()
+        
+    if client_creds:
+        print_event("[+] Client credentials fetched Succussfully.",color="yellow",on_color=None)
+
+    #Device Authorization initiation
+    try:
+        device_authorization = sso_oidc.start_device_authorization(
+            clientId=client_creds['clientId'],
+            clientSecret=client_creds['clientSecret'],
+            startUrl=start_url,
+        )
+    except Exception as e:
+        cprint(f"The program has been terminated because of {e}", "red", attrs=["bold"], file=sys.stderr)
+        exit()
+        
+
+    
+    print_event(f"[+] Device authorization has been initiated through browser.","yellow",on_color=None)
+    print_event(f"[+] Please authorize only if {device_authorization['userCode']} matches the code on your browser screen.","yellow",on_color=None,attrs=["bold"],end='',flush=True)
+
+    #Browser Authorization 
+    url = device_authorization['verificationUriComplete']
+    device_code = device_authorization['deviceCode']
+    expires_in = device_authorization['expiresIn']
+    interval = device_authorization['interval']
+    sleep(10)
+    print_event(f"\r[+] Please authorize only if ********* matches the code on your browser screen.","yellow",on_color=None)
+
+    webbrowser.open(url, autoraise=True)
+   
+
+    #Wait until authorization
+    authwait()
+
+    try:
+        token
+    except NameError:
+        print_event("\r[+] Session Expired. Program is being terminated...          ","red",on_color=None,attrs=["bold"])
+        exit()
+
+    access_token = token['accessToken']
+    sso = session.client('sso')
+    account_list_raw = sso.list_accounts(
+        accessToken=access_token,
+        maxResults=1000  
+    )
+    ####Skeleton Completed####
+
+    #Fetch all accessible accounts otherwise give list
+    if args.accounts:
+        account_list= args.accounts
+    else:
+        account_list =  [account['accountId'] for account in account_list_raw['accountList']]
+
+    print_event(f'[+] Total accounts: {len(account_list)}','yellow',on_color=None)
+    print_event(f"    {account_list}\n\n","cyan",on_color=None)
+
+    combined_subdomains = set()
+
+
     #Iterate through accounts
 
     for account_id in account_list:
@@ -374,40 +401,49 @@ def main():
         roleNames = [role['roleName'] for role in account_roles['roleList']]
         
         #print(roleNames)
-
-        try: 
-    #Get credentials for each account
-            role_creds = sso.get_role_credentials(
-                roleName='Security_Audit',
-                accountId=account_id,
-                accessToken=access_token,
-            )
-
-            #Create session with these credentials
-            session = Session(
-                region_name=region,
-                aws_access_key_id=role_creds['roleCredentials']['accessKeyId'],
-                aws_secret_access_key=role_creds['roleCredentials']['secretAccessKey'],
-                aws_session_token=role_creds['roleCredentials']['sessionToken'],
-            )
-
-            #Route53 client
-            route53 = session.client('route53')      
-            print_event(f"[+] Route53 DNS records in account {account_id}:","yellow","on_blue")
-
-            paginate_hosted_zones = route53.get_paginator('list_hosted_zones')
-            for zone_response in paginate_hosted_zones.paginate():
-                for zone in zone_response['HostedZones']:
-                    zone_id = zone['Id']
-                    zone_name = zone['Name'].rstrip('.')
-                    print_event("","green",on_color=None)
-                    print_event(f"[+] Route53 DNS records in ZoneName {zone_name}:","yellow","on_light_blue")
-                    print_event("","green",on_color=None)
-                    subdomains = get_subdomains(zone_id)
-            print_event("","green",on_color=None)
-            print_event("","green",on_color=None)
+        try:
+            roleNames
         except:
-            cprint(f"You do not have enough privileges in account {account_id}!", "red", attrs=["bold"], file=sys.stderr)
+            print_event(f"You have No roles assigned for {account_id}.","yellow",None)
+            pass
+
+        
+        #Get credentials for each account
+        for role_Name in roleNames:
+            try:
+                role_creds = sso.get_role_credentials(
+                    roleName=role_Name,
+                    accountId=account_id,
+                    accessToken=access_token,
+                )
+
+                #Create session with these credentials
+                session = Session(
+                    region_name=region,
+                    aws_access_key_id=role_creds['roleCredentials']['accessKeyId'],
+                    aws_secret_access_key=role_creds['roleCredentials']['secretAccessKey'],
+                    aws_session_token=role_creds['roleCredentials']['sessionToken'],
+                )
+
+                #Route53 client
+                route53 = session.client('route53')      
+                print_event(f"[+] Route53 DNS records in account {account_id}:","yellow","on_blue")
+
+                paginate_hosted_zones = route53.get_paginator('list_hosted_zones')
+                for zone_response in paginate_hosted_zones.paginate():
+                    for zone in zone_response['HostedZones']:
+                        zone_id = zone['Id']
+                        zone_name = zone['Name'].rstrip('.')
+                        print_event("","green",on_color=None)
+                        print_event(f"[+] Route53 DNS records in ZoneName {zone_name}:","yellow","on_light_blue")
+                        print_event("","green",on_color=None)
+                        subdomains = get_subdomains(zone_id)
+                print_event("","green",on_color=None)
+                print_event("","green",on_color=None)
+                break
+            except:
+                cprint(f"You do not have enough privileges in account {account_id} with role {role_Name}!", "red", attrs=["bold"], file=sys.stderr)
+                pass
 
     print_event(f"[+] Unique subdomains across all accounts: {len(combined_subdomains)}","yellow","on_blue")
     for subdomain in combined_subdomains:
