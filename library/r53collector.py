@@ -35,7 +35,7 @@ def main():
         return values.split(',')
 
     #Argument parsing
-    parser = argparse.ArgumentParser(description='Route53 Record Collector v1.2.25')
+    parser = argparse.ArgumentParser(description='Route53 Record Collector v-1.2.25')
 
     parser.add_argument(
         '-u',
