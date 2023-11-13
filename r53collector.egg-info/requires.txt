@@ -1,0 +1,5 @@
+termcolor
+boto3
+openpyxl
+ipaddress
+dnspython

@@ -1,0 +1,21 @@
+Metadata-Version: 2.1
+Name: r53collector
+Version: 1.2.25
+Summary: Collect all route53 records distributed across yours accounts in aws org.
+Home-page: UNKNOWN
+Author: maerifat (Maerifat Majeed)
+Author-email: <maerifat@gmail.com>
+License: UNKNOWN
+Keywords: python,route53,excel,sso,aws,aws org,subdomains,dangling,certificates
+Platform: UNKNOWN
+Classifier: Development Status :: 1 - Planning
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: Unix
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+This python tool collects DNS records from AWS Route53 across multiple accounts using AWS SSO (Single Sign-On) and provides various options for listing, filtering, storing and analyzing the data.
+

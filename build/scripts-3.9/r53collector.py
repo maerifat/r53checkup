@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!python
 import sys
 from termcolor import colored,cprint 
 from time import time, sleep
@@ -35,7 +35,7 @@ def main():
         return values.split(',')
 
     #Argument parsing
-    parser = argparse.ArgumentParser(description='Route53 Record Collector v1.2.25')
+    parser = argparse.ArgumentParser(description='Route53 Record Collector V 1.2.8')
 
     parser.add_argument(
         '-u',

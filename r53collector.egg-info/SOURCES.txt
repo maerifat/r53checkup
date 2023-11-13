@@ -1,0 +1,12 @@
+LICENSE
+README.md
+setup.py
+./library/r53collector.py
+library/__init__.py
+library/r53collector.py
+r53collector.egg-info/PKG-INFO
+r53collector.egg-info/SOURCES.txt
+r53collector.egg-info/dependency_links.txt
+r53collector.egg-info/entry_points.txt
+r53collector.egg-info/requires.txt
+r53collector.egg-info/top_level.txt
