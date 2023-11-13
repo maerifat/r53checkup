@@ -36,6 +36,7 @@ def main():
                    @*%         %-%                    
                       %%%@@@%%%          
                                     Identify risky assets in AWS Route53 !
+                                                v 1.2.29
                                     
                                                                                                     
     """

@@ -3,8 +3,8 @@ import codecs
 import os
 
 
-VERSION = '1.2.28'
-DESCRIPTION = 'Collect all route53 records distributed across yours accounts in aws org.'
+VERSION = '1.2.29'
+DESCRIPTION = 'Checkup all route53 records distributed across yours accounts in aws org.'
 LONG_DESCRIPTION = 'This python tool collects DNS records from AWS Route53 across multiple accounts using AWS SSO (Single Sign-On) and provides various options for listing, filtering, storing and analyzing the data.'
 
 # Setting up
@@ -21,7 +21,7 @@ setup(
     keywords=['python', 'route53', 'excel', 'sso', 'aws', 'aws org', 'subdomains', 'dangling' , 'certificates'],
     entry_points={
         'console_scripts': [
-            'r53collector = scripts.r53collector:main',
+            'r53checkup = scripts.r53checkup:main',
         ],
     },
     classifiers=[
