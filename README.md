@@ -9,7 +9,7 @@ This Python tool collects DNS records from AWS Route53 across multiple accounts 
 
 ## Installation
 
-Use the package manager [pip3](https://pip.pypa.io/en/stable/) to install foobar.
+Use the package manager [pip3](https://pip.pypa.io/en/stable/) to install r53collector.
 
 ```bash
 pip3 install r53collector
