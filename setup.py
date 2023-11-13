@@ -3,7 +3,7 @@ import codecs
 import os
 
 
-VERSION = '1.2.26'
+VERSION = '1.2.27'
 DESCRIPTION = 'Collect all route53 records distributed across yours accounts in aws org.'
 LONG_DESCRIPTION = 'This python tool collects DNS records from AWS Route53 across multiple accounts using AWS SSO (Single Sign-On) and provides various options for listing, filtering, storing and analyzing the data.'
 
