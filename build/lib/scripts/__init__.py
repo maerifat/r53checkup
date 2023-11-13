@@ -1,1 +1,1 @@
-from .r53collector import main
+from .r53checkup import main

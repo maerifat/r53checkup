@@ -1,0 +1,11 @@
+LICENSE
+README.md
+setup.py
+r53checkup.egg-info/PKG-INFO
+r53checkup.egg-info/SOURCES.txt
+r53checkup.egg-info/dependency_links.txt
+r53checkup.egg-info/entry_points.txt
+r53checkup.egg-info/requires.txt
+r53checkup.egg-info/top_level.txt
+scripts/__init__.py
+scripts/r53checkup.py

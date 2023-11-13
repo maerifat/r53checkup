@@ -1,3 +1,0 @@
-[console_scripts]
-r53collector = scripts.r53collector:main
-

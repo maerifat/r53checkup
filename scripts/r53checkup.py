@@ -45,7 +45,7 @@ def main():
     
 
       #Argument parsing
-    parser = argparse.ArgumentParser(description='Identify risky assets in AWS Route53 with r53checkup v-1.2.28')
+    parser = argparse.ArgumentParser(description='Identify risky assets in AWS Route53 with r53checkup')
 
     parser.add_argument(
         '-u',
@@ -340,7 +340,7 @@ def main():
     try: 
         sso_oidc = session.client('sso-oidc')
         client_creds = sso_oidc.register_client(
-            clientName='r53collector',
+            clientName='r53checkup',
             clientType='public',
         )
 
