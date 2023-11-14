@@ -15,7 +15,7 @@ setup(
     long_description_content_type="text/markdown",
     long_description=LONG_DESCRIPTION,
     packages=find_packages(),
-    install_requires=['termcolor', 'boto3', 'openpyxl', 'ipaddress', 'dnspython'],
+    install_requires=['termcolor', 'boto3', 'openpyxl', 'ipaddress', 'dnspython','cryptography','asn1crypto'],
     keywords=['python', 'route53', 'excel', 'sso', 'aws', 'aws org', 'subdomains', 'dangling' , 'certificates'],
     entry_points={
         'console_scripts': [
