@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import os
 from termcolor import colored,cprint 
 from time import time, sleep
 import webbrowser
@@ -37,7 +38,7 @@ def main():
                    @*%         %-%                    
                       %%%@@@%%%          
                                     Know the health of DNS records in AWS Route53 !
-                                                   v 1.2.31
+                                                   v 1.2.32
                                     
                                                                                                     
     """
@@ -101,7 +102,7 @@ def main():
         '-cc',
         '--check-cert',
         action='store_true',
-        help='Checks if the DNS record is dangling.'
+        help='Checks health of certificates.'
     )
 
     parser.add_argument(
@@ -112,13 +113,13 @@ def main():
         help='File name to save as, file type is recognised from the extension. eg subdomains.xlsx'
     )
 
-
     parser.add_argument(
         '-l',
         '--list',
         action='store_true',
         help='List all subdomains, without any verbose.'
     )
+
     parser.add_argument(
         '-nc',
         '--no-color',
@@ -151,29 +152,39 @@ def main():
                 return False
 
     def print_event(eventmsg,color,on_color,*extraargs,**extrapairs):
-        
         if not args.no_verbose:
             if not args.no_color:
                 cprint(eventmsg,color,on_color,*extraargs,**extrapairs)
             else:
                 cprint(eventmsg,None,None,*extraargs,**extrapairs)
 
-    def is_text():
-        if args.output:
-            filelocation=args.output
-            if filelocation.endswith('txt'):
-                return True
-
-    def is_excel():
-        if args.output:
-            filelocation=args.output
-            if filelocation.endswith(('xls','xlsx')):
-                return True
 
     def file_location():
         if args.output:
             filelocation=args.output
+            directory_path = os.path.dirname(filelocation)
+            if not filelocation.endswith(('.xls','.xlsx','.txt')):
+                cprint(f"This file extension is not supported, choose among .xlsx, .xls, .txt", "red", attrs=["bold"],file=sys.stderr)
+                exit()
+            if not os.path.exists(directory_path):
+                cprint(f"The path {directory_path} doesn't exist. Please choose a valid file path.", "red", attrs=["bold"],file=sys.stderr)
+                exit()
             return filelocation
+        
+
+    def is_text():
+        if args.output:
+            if file_location().endswith('txt'):
+                return True
+
+
+        
+    def is_excel():
+        if args.output:
+            if file_location().endswith(('.xls','.xlsx')):
+                return True
+            
+
         
     def get_dns_value():
         global dns_value
@@ -196,25 +207,25 @@ def main():
     def is_dangling(dns_value):
         if record['Type'] == 'CNAME' or is_alias:
             try:
-                result = dnsx.resolver.resolve(dns_value)
+                result = dns.resolver.resolve(dns_value)
                 if result:
                     return "No"
-            except dnsx.resolver.NXDOMAIN:
+            except dns.resolver.NXDOMAIN:
                 return "Yes"
-            except dnsx.resolver.Timeout:
+            except dns.resolver.Timeout:
                 return "Time Out"
-            except dnsx.resolver.NoAnswer:
+            except dns.resolver.NoAnswer:
                 return "No Answwer"
             except Exception as e:
-                return e
+                return str(e)
         else: 
             return "NA"
         
     def append_row_to_sheet():
         if args.check_dangling:
-            sheet_row=[account_id,zone_name,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value()]
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value()]
         else:
-            sheet_row=[account_id,zone_name,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value()]
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value()]
         sheet.append(sheet_row)
 
    #Function to iterate and check if authorization is complete
@@ -314,6 +325,18 @@ def main():
 
         return subdomains
     
+    def get_dnssec(zone_id):
+        try:
+            dnssec_response= route53.get_dnssec(
+                HostedZoneId=zone_id
+            )
+            
+            dnssec_status_value=dnssec_response['Status']['ServeSignature']
+            print_event(f"Status of DNSSEC is {dnssec_status_value} for zone {zone_name}","yellow",None)
+            return dnssec_status_value
+        except:
+            return "Error"
+    
 
     if args.list:
         args.no_verbose=True
@@ -323,17 +346,18 @@ def main():
         workbook = openpyxl.Workbook()
         sheet=workbook.active
         if args.check_dangling:
-            sheet_headers= ['Account_Id', 'Zone_Name','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value']
+            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value']
         else:
-            sheet_headers= ['Account_Id', 'Zone_Name','Record_Name', 'Record_Type','Is_Alias','Record_Value']
+            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Record_Value']
         sheet.append(sheet_headers)
         sheet.column_dimensions['A'].width = 15
         sheet.column_dimensions['B'].width = 30
-        sheet.column_dimensions['C'].width = 40
-        sheet.column_dimensions['D'].width = 12
+        sheet.column_dimensions['C'].width = 15
+        sheet.column_dimensions['D'].width = 40
         sheet.column_dimensions['E'].width = 12
         sheet.column_dimensions['F'].width = 12
-        sheet.column_dimensions['G'].width = 70
+        sheet.column_dimensions['G'].width = 12
+        sheet.column_dimensions['H'].width = 70
 
     session =Session()
 
@@ -459,6 +483,7 @@ def main():
                         print_event("","green",on_color=None)
                         print_event(f"[+] Route53 DNS records in ZoneName {zone_name}:","yellow","on_light_blue")
                         print_event("","green",on_color=None)
+                        dnssec_status = get_dnssec(zone_id)
                         subdomains = get_subdomains(zone_id)
                 print_event("","green",on_color=None)
                 print_event("","green",on_color=None)
@@ -490,7 +515,7 @@ def main():
             cell.font = header_font
             cell.fill = header_fill
 
-        for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=6, max_col=6):
+        for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=7, max_col=7):
             for cell in row:
                 if cell.value == "Yes":
                     cell.font = Font(color="FF0000")  # Red font color

@@ -38,7 +38,7 @@ def main():
                    @*%         %-%                    
                       %%%@@@%%%          
                                     Know the health of DNS records in AWS Route53 !
-                                                   v 1.2.31
+                                                   v 1.2.32
                                     
                                                                                                     
     """
@@ -152,7 +152,6 @@ def main():
                 return False
 
     def print_event(eventmsg,color,on_color,*extraargs,**extrapairs):
-        
         if not args.no_verbose:
             if not args.no_color:
                 cprint(eventmsg,color,on_color,*extraargs,**extrapairs)
@@ -170,7 +169,6 @@ def main():
             if not os.path.exists(directory_path):
                 cprint(f"The path {directory_path} doesn't exist. Please choose a valid file path.", "red", attrs=["bold"],file=sys.stderr)
                 exit()
-            
             return filelocation
         
 
@@ -396,7 +394,7 @@ def main():
             startUrl=start_url,
         )
     except Exception as e:
-        cprint(f"The program has been terminated because of {e}", "red", attrs=["bold"], file=sys.stderr)
+        cprint(f"The provided url is not a valid SSO Start URL. The program is being terminated...", "red", attrs=["bold"], file=sys.stderr)
         exit()
         
     print_event(f"[+] Device authorization has been initiated through browser.","yellow",on_color=None)

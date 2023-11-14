@@ -16,8 +16,6 @@ def check_certificate(host, port=443):
     not_after = datetime.datetime.strptime(cert['notAfter'], "%b %d %H:%M:%S %Y %Z")
 
 
-    
-
     print(cipher)
 
 

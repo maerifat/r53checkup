@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 
-VERSION = '1.2.31'
+VERSION = '1.2.32'
 DESCRIPTION = 'Checkup all route53 records distributed across yours accounts in aws org.'
 LONG_DESCRIPTION = 'This python tool collects DNS records from AWS Route53 across multiple accounts using AWS SSO (Single Sign-On) and provides various options for listing, filtering, storing and analyzing the data.'
 
