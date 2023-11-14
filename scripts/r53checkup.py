@@ -11,7 +11,9 @@ import openpyxl
 from openpyxl.styles import Font,PatternFill
 import ipaddress
 import dns.resolver #pip3 install dnspython
-
+import ssl
+import socket
+import datetime
 
 
 def main():
@@ -38,7 +40,7 @@ def main():
                    @*%         %-%                    
                       %%%@@@%%%          
                                     Know the health of DNS records in AWS Route53 !
-                                                   v 1.2.33
+                                                   v 1.2.34
                                     
                                                                                                     
     """
@@ -139,6 +141,62 @@ def main():
 
 
 #Some important functions
+    def is_private(hostname):
+        if ("acm-validations.aws" not in get_dns_value()) and ( record['Type']=='CNAME' or record['Type']=='A' or record['Type']=='AAAA'):
+            try:
+                ip_address = socket.gethostbyname(hostname)
+            
+                private_ranges = [
+                    ('10.0.0.0', '10.255.255.255'),
+                    ('172.16.0.0', '172.31.255.255'),
+                    ('192.168.0.0', '192.168.255.255')
+                ]
+                ip_int = int.from_bytes(socket.inet_aton(ip_address), byteorder='big')
+                for start, end in private_ranges:
+                    start_int = int.from_bytes(socket.inet_aton(start), byteorder='big')
+                    end_int = int.from_bytes(socket.inet_aton(end), byteorder='big')
+                    if start_int <= ip_int <= end_int:
+                        print("Private")
+                        return "Private"
+                print("Public")
+                return "Public"
+            except:
+                print("Unreachable")
+                return "Unreachable"
+
+
+    def check_cert(host, port=443):
+        if args.check_cert:
+            try:
+                global cipher,cn,san,not_before,not_after,current_date
+                socket.setdefaulttimeout(1)
+                # Connect to the server and retrieve the SSL/TLS certificate
+                context = ssl.create_default_context()
+                with socket.create_connection((host, port)) as sock:
+                    sock.settimeout(1)
+                    with context.wrap_socket(sock, server_hostname=host,) as ssock:
+                        cert = ssock.getpeercert()
+                        cipher = ssock.cipher()
+
+                if cert:
+                    current_date = datetime.datetime.utcnow()
+                    not_before = datetime.datetime.strptime(cert['notBefore'], "%b %d %H:%M:%S %Y %Z")
+                    not_after = datetime.datetime.strptime(cert['notAfter'], "%b %d %H:%M:%S %Y %Z")
+                    cn = cert['subject'][0][0][1]
+                    san = [x[1] for x in cert.get('subjectAltName', []) if x[0] == 'DNS']
+                    print(cipher)
+                    print(san)
+
+                if host != cn and host not in san:
+                    print(cipher)
+                    raise Exception("Host and certificate name mismatch.")
+
+            except ssl.SSLError as e:
+                print("SSL Error:", e)
+                print("Cipher:", cipher)
+            except Exception as e:
+                print(e)
+
 
     def is_ip(text):
         try:
@@ -185,7 +243,6 @@ def main():
             if file_location().endswith(('.xls','.xlsx')):
                 return True
             
-
         
     def get_dns_value():
         global dns_value
@@ -292,6 +349,9 @@ def main():
                             get_dns_value()
                             if is_excel():
                                 append_row_to_sheet()
+                            
+                            if is_private(record['Name']) == "Public":
+                                check_cert(record['Name'].rstrip('.'))
                             subdomains.append(record['Name'].rstrip('.'))
                             combined_subdomains.add(record['Name'].rstrip('.'))
                             print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
@@ -302,6 +362,8 @@ def main():
                             get_dns_value()
                             if is_excel():
                                 append_row_to_sheet()
+                            if is_private(record['Name']) == "Public":
+                                check_cert(record['Name'].rstrip('.'))
                             subdomains.append(record['Name'].rstrip('.'))
                             combined_subdomains.add(record['Name'].rstrip('.'))
                             print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
@@ -313,6 +375,8 @@ def main():
                             get_dns_value()
                             if is_excel():
                                 append_row_to_sheet()
+                            if is_private(record['Name']) == "Public":
+                                check_cert(record['Name'].rstrip('.'))
                             subdomains.append(record['Name'].rstrip('.'))
                             combined_subdomains.add(record['Name'].rstrip('.'))
                             print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)              
@@ -320,6 +384,8 @@ def main():
                         get_dns_value()
                         if is_excel():
                             append_row_to_sheet()
+                        if is_private(record['Name']) == "Public":
+                                check_cert(record['Name'].rstrip('.'))
                         subdomains.append(record['Name'].rstrip('.'))
                         combined_subdomains.add(record['Name'].rstrip('.'))
                         print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)

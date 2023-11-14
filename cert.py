@@ -2,9 +2,13 @@ import ssl
 import socket
 import datetime
 def check_certificate(host, port=443):
+    
+    socket.setdefaulttimeout(3)
+    
     # Connect to the server and retrieve the SSL/TLS certificate
     context = ssl.create_default_context()
     with socket.create_connection((host, port)) as sock:
+        sock.settimeout(2)
         with context.wrap_socket(sock, server_hostname=host) as ssock:
             cert = ssock.getpeercert()
             cipher = ssock.cipher()
@@ -14,6 +18,12 @@ def check_certificate(host, port=443):
 
     not_before = datetime.datetime.strptime(cert['notBefore'], "%b %d %H:%M:%S %Y %Z")
     not_after = datetime.datetime.strptime(cert['notAfter'], "%b %d %H:%M:%S %Y %Z")
+    
+    
+    print(socket.getdefaulttimeout())
+    print("ok")
+
+
 
 
     print(cipher)

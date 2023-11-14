@@ -1,24 +1,25 @@
-import dns.resolver
-import dns.dnssec
+import socket
 
-def check_dnssec(domain):
-    # Resolve the domain to get its nameservers
-    resolver = dns.resolver.Resolver()
+def is_private(hostname): 
+    try:
+        ip_address = socket.gethostbyname(hostname)
+    
+        private_ranges = [
+            ('10.0.0.0', '10.255.255.255'),
+            ('172.16.0.0', '172.31.255.255'),
+            ('192.168.0.0', '192.168.255.255')
+        ]
+        ip_int = int.from_bytes(socket.inet_aton(ip_address), byteorder='big')
+        for start, end in private_ranges:
+            start_int = int.from_bytes(socket.inet_aton(start), byteorder='big')
+            end_int = int.from_bytes(socket.inet_aton(end), byteorder='big')
+            if start_int <= ip_int <= end_int:
+                return "Private"
+        return "Public"
+    except:
+        return "Unreachable"
 
 
-    # Check for DS records in the parent domain
-    parent_domain = domain.split('.')[-2]
-    ds_records = resolver.query(parent_domain, dns.rdtypes.DS).to_text()
 
-    # Check for DNSKEY records in the child domain
-    dnskey_records = resolver.query(domain, dns.rdtypes.DNSKEY).to_text()
 
-    # If there are both DS and DNSKEY records, the domain is DNSSEC-enabled
-    if ds_records and dnskey_records:
-        print(f"{domain} is DNSSEC-enabled")
-    else:
-        print(f"{domain} is not DNSSEC-enabled")
 
-if __name__ == "__main__":
-    domain = input("Enter a domain: ")
-    check_dnssec(domain)
