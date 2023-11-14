@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: r53checkup
-Version: 1.2.32
+Version: 1.2.33
 Summary: Checkup all route53 records distributed across yours accounts in aws org.
 Home-page: UNKNOWN
 Author: maerifat (Maerifat Majeed)

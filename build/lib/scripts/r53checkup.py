@@ -38,7 +38,7 @@ def main():
                    @*%         %-%                    
                       %%%@@@%%%          
                                     Know the health of DNS records in AWS Route53 !
-                                                   v 1.2.32
+                                                   v 1.2.33
                                     
                                                                                                     
     """
@@ -394,7 +394,7 @@ def main():
             startUrl=start_url,
         )
     except Exception as e:
-        cprint(f"The program has been terminated because of {e}", "red", attrs=["bold"], file=sys.stderr)
+        cprint(f"The provided url is not a valid SSO Start URL. The program is being terminated...", "red", attrs=["bold"], file=sys.stderr)
         exit()
         
     print_event(f"[+] Device authorization has been initiated through browser.","yellow",on_color=None)

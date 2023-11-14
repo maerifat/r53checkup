@@ -38,7 +38,7 @@ def main():
                    @*%         %-%                    
                       %%%@@@%%%          
                                     Know the health of DNS records in AWS Route53 !
-                                                   v 1.2.32
+                                                   v 1.2.33
                                     
                                                                                                     
     """
@@ -166,9 +166,10 @@ def main():
             if not filelocation.endswith(('.xls','.xlsx','.txt')):
                 cprint(f"This file extension is not supported, choose among .xlsx, .xls, .txt", "red", attrs=["bold"],file=sys.stderr)
                 exit()
-            if not os.path.exists(directory_path):
-                cprint(f"The path {directory_path} doesn't exist. Please choose a valid file path.", "red", attrs=["bold"],file=sys.stderr)
-                exit()
+            if directory_path:
+                if not os.path.exists(directory_path):
+                    cprint(f"The path {directory_path} doesn't exist. Please choose a valid file path.", "red", attrs=["bold"],file=sys.stderr)
+                    exit()
             return filelocation
         
 
@@ -230,7 +231,8 @@ def main():
 
    #Function to iterate and check if authorization is complete
     def authwait():
-        for n in range(1, expires_in // (interval+3) + 1):
+        for n in range(1, expires_in // (interval+3)+ 1):
+            
             try:
                 global token
                 token = sso_oidc.create_token(
@@ -242,10 +244,10 @@ def main():
                         "s3:*"
                     ]
                 )
-                sleep(interval+3)
+                sleep(interval)
                 if n>1:
                     print_event("\r[+] Device yet to be authorized in browser, waiting...","yellow",on_color=None)
-                    print_event(f"[+] Authorization Successful after {n} attemps.","green",on_color=None)
+                    print_event(f"[+] Authorization Successful.","green",on_color=None)
         
                 else:
                     print_event(f"[+] Authorization Successful in first attempt.","green",on_color=None)
@@ -267,6 +269,7 @@ def main():
                         print_event("Device yet to be authorized in browser, waiting...",color="red",on_color=None,attrs=["blink"],end='', flush=True)
                     else:
                         print_event("\rDevice yet to be authorized in browser, waiting...",color="red",on_color=None,attrs=["blink"],end='', flush=True)
+                sleep(interval+3)
                 pass
 
 
@@ -494,10 +497,8 @@ def main():
 
     print_event(f"[+] Unique subdomains across all accounts: {len(combined_subdomains)}","yellow","on_blue")
     for subdomain in combined_subdomains:
-        if args.no_color:
-            cprint(f"    {subdomain}", color=None,on_color=None)
-        else:
-            cprint(f"    {subdomain}", "light_cyan",on_color=None)
+        print_event(f"    {subdomain}", color=None,on_color=None)
+
         
     if is_text() and combined_subdomains:
         with open(file_location(),'w') as textfile:
