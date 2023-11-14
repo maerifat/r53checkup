@@ -158,22 +158,29 @@ def main():
             else:
                 cprint(eventmsg,None,None,*extraargs,**extrapairs)
 
-    def is_text():
-        if args.output:
-            filelocation=args.output
-            if filelocation.endswith('txt'):
-                return True
-
-    def is_excel():
-        if args.output:
-            filelocation=args.output
-            if filelocation.endswith(('xls','xlsx')):
-                return True
 
     def file_location():
         if args.output:
             filelocation=args.output
+            if not filelocation.endswith(('.xls','.xlsx','.txt')):
+                cprint(f"This file extension is not supported, choose among .xlsx, .xls, .txt", "red", attrs=["bold"],file=sys.stderr)
+                exit()
             return filelocation
+        
+
+    def is_text():
+        if args.output:
+            if file_location().endswith('txt'):
+                return True
+
+
+        
+    def is_excel():
+        if args.output:
+            if file_location().endswith(('.xls','.xlsx')):
+                return True
+            
+
         
     def get_dns_value():
         global dns_value
@@ -206,7 +213,7 @@ def main():
             except dns.resolver.NoAnswer:
                 return "No Answwer"
             except Exception as e:
-                return e
+                return str(e)
         else: 
             return "NA"
         
@@ -504,7 +511,7 @@ def main():
             cell.font = header_font
             cell.fill = header_fill
 
-        for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=6, max_col=6):
+        for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=7, max_col=7):
             for cell in row:
                 if cell.value == "Yes":
                     cell.font = Font(color="FF0000")  # Red font color
