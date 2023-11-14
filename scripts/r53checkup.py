@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import os
 from termcolor import colored,cprint 
 from time import time, sleep
 import webbrowser
@@ -101,7 +102,7 @@ def main():
         '-cc',
         '--check-cert',
         action='store_true',
-        help='Checks if the DNS record is dangling.'
+        help='Checks health of certificates.'
     )
 
     parser.add_argument(
@@ -112,13 +113,13 @@ def main():
         help='File name to save as, file type is recognised from the extension. eg subdomains.xlsx'
     )
 
-
     parser.add_argument(
         '-l',
         '--list',
         action='store_true',
         help='List all subdomains, without any verbose.'
     )
+
     parser.add_argument(
         '-nc',
         '--no-color',
@@ -162,9 +163,14 @@ def main():
     def file_location():
         if args.output:
             filelocation=args.output
+            directory_path = os.path.dirname(filelocation)
             if not filelocation.endswith(('.xls','.xlsx','.txt')):
                 cprint(f"This file extension is not supported, choose among .xlsx, .xls, .txt", "red", attrs=["bold"],file=sys.stderr)
                 exit()
+            if not os.path.exists(directory_path):
+                cprint(f"The path {directory_path} doesn't exist. Please choose a valid file path.", "red", attrs=["bold"],file=sys.stderr)
+                exit()
+            
             return filelocation
         
 
