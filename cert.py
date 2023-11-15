@@ -43,7 +43,7 @@ def get_cert(host,port=443):
         print(host_set)
         
         if host_set not in san_cn_set:
-            print("not a valid cert")
+            print("not a valid cert because of host mismatch")
             
         # print(san_cn_joint)
         

@@ -14,11 +14,16 @@ import dns.resolver #pip3 install dnspython
 import ssl
 import socket
 import datetime
+import pkg_resources
 
 
 def main():
-
-    banner="""
+    try:
+        version = pkg_resources.require("r53checkup")[0].version
+    except pkg_resources.DistributionNotFound:
+        print("version not fount")
+        
+    banner=f"""
                              __         __                                        
                          :.#-::         -::==-=       
                         -                      #   
@@ -39,13 +44,15 @@ def main():
                  @%               ##                  
                    @*%         %-%                    
                       %%%@@@%%%          
-                                    Know the health of DNS records in AWS Route53 !
-                                                   v 1.2.34
-                                    
-                                                                                                    
-    """
-
-    cprint(banner,"cyan",attrs=['bold'], file=sys.stderr)
+    {' '*30}Know the health of DNS records in AWS Route53 !"""
+    ver=f"""{' '*53}v {version}\n"""
+    
+    try:
+        print()
+        cprint(banner,"cyan",attrs=['bold'], file=sys.stderr)
+        cprint(ver,"magenta",attrs=['bold'], file=sys.stderr)
+    except:
+        print()
     
 
       #Argument parsing
@@ -147,36 +154,40 @@ def main():
 #Some important functions
     def is_accessible(hostname):
         global accessibility
-        if ("acm-validations.aws" not in get_dns_value()) and ( record['Type']=='CNAME' or record['Type']=='A' or record['Type']=='AAAA'):
-            try:
-                ip_address = socket.gethostbyname(hostname)
-            
-                private_ranges = [
-                    ('10.0.0.0', '10.255.255.255'),
-                    ('172.16.0.0', '172.31.255.255'),
-                    ('192.168.0.0', '192.168.255.255')
-                ]
-                ip_int = int.from_bytes(socket.inet_aton(ip_address), byteorder='big')
-                for start, end in private_ranges:
-                    start_int = int.from_bytes(socket.inet_aton(start), byteorder='big')
-                    end_int = int.from_bytes(socket.inet_aton(end), byteorder='big')
-                    if start_int <= ip_int <= end_int:
-                        print_event("Accessiblity :","blue","on_light_grey",end='')
-                        print_event(f" Private","yellow",None)
-                        accessibility="Private"
-                        return "Private"
-                print_event("Accessiblity :","blue","on_light_grey",attrs=['bold'],end='')
-                print_event(f" Public","yellow",None)
-                accessibility="Public"
-                return "Public"
-            except:
+        if args.output or args.check_cert:
+            if ("acm-validations.aws" not in get_dns_value()) and ( record['Type']=='CNAME' or record['Type']=='A' or record['Type']=='AAAA'):
+                try:
+                    ip_address = socket.gethostbyname(hostname)
+                
+                    private_ranges = [
+                        ('10.0.0.0', '10.255.255.255'),
+                        ('172.16.0.0', '172.31.255.255'),
+                        ('192.168.0.0', '192.168.255.255')
+                    ]
+                    ip_int = int.from_bytes(socket.inet_aton(ip_address), byteorder='big')
+                    for start, end in private_ranges:
+                        start_int = int.from_bytes(socket.inet_aton(start), byteorder='big')
+                        end_int = int.from_bytes(socket.inet_aton(end), byteorder='big')
+                        if start_int <= ip_int <= end_int:
+                            print_event("Accessiblity :","blue","on_light_grey",end='')
+                            print_event(f" Private","yellow",None)
+                            accessibility="Private"
+                            return "Private"
+                    print_event("Accessiblity :","blue","on_light_grey",attrs=['bold'],end='')
+                    print_event(f" Public","yellow",None)
+                    accessibility="Public"
+                    return "Public"
+                except:
+                    print_event("Accessiblity :","blue","on_light_grey",end='')
+                    print_event(f" Unreachable","yellow",None)
+                    accessibility="Unreachable"
+                    return "Unreachable"
+            else:
                 print_event("Accessiblity :","blue","on_light_grey",end='')
-                print_event(f" Unreachable","yellow",None)
-                accessibility="Unreachable"
-                return "Unreachable"
+                print_event(f" Not Applicable","yellow",None)
+                accessibility="NA"
+                return "NA"
         else:
-            print_event("Accessiblity :","blue","on_light_grey",end='')
-            print_event(f" Not Applicable","yellow",None)
             accessibility="NA"
             return "NA"
 
@@ -500,17 +511,21 @@ def main():
         sheet.column_dimensions['G'].width = 12
         sheet.column_dimensions['H'].width = 70
 
-    session =Session()
+
+
+    if args.region:
+        region = args.region
+    else:
+        region = 'us-east-1'
+        
+    session =Session(region_name=region)
 
     ###Skeleton Creation###
 
     #Input details
     start_url = args.start_url
 
-    if args.region:
-        region = args.region
-    else:
-        region = 'us-east-1'
+
 
     #OIDC Connection
     try: 
@@ -635,7 +650,7 @@ def main():
 
     print_event(f"[+] Unique subdomains across all accounts: {len(combined_subdomains)}","yellow","on_blue")
     for subdomain in combined_subdomains:
-        print_event(f"    {subdomain}", color=None,on_color=None)
+        cprint(f"    {subdomain}", color="cyan",on_color=None)
 
         
     if is_text() and combined_subdomains:

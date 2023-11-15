@@ -11,12 +11,19 @@ import openpyxl
 from openpyxl.styles import Font,PatternFill
 import ipaddress
 import dns.resolver #pip3 install dnspython
-
+import ssl
+import socket
+import datetime
+import pkg_resources
 
 
 def main():
-
-    banner="""
+    try:
+        version = pkg_resources.require("r53checkup")[0].version
+    except pkg_resources.DistributionNotFound:
+        print("version not fount")
+        
+    banner=f"""
                              __         __                                        
                          :.#-::         -::==-=       
                         -                      #   
@@ -37,13 +44,15 @@ def main():
                  @%               ##                  
                    @*%         %-%                    
                       %%%@@@%%%          
-                                    Know the health of DNS records in AWS Route53 !
-                                                   v 1.2.34
-                                    
-                                                                                                    
-    """
-
-    cprint(banner,"cyan",attrs=['bold'], file=sys.stderr)
+    {' '*30}Know the health of DNS records in AWS Route53 !"""
+    ver=f"""{' '*53}v {version}\n"""
+    
+    try:
+        print()
+        cprint(banner,"cyan",attrs=['bold'], file=sys.stderr)
+        cprint(ver,"magenta",attrs=['bold'], file=sys.stderr)
+    except:
+        print()
     
 
       #Argument parsing
@@ -136,9 +145,113 @@ def main():
     )
 
     args = parser.parse_args()
+    
+    
+    def assign_default_values():
+        print()
 
 
 #Some important functions
+    def is_accessible(hostname):
+        global accessibility
+        if ("acm-validations.aws" not in get_dns_value()) and ( record['Type']=='CNAME' or record['Type']=='A' or record['Type']=='AAAA'):
+            try:
+                ip_address = socket.gethostbyname(hostname)
+            
+                private_ranges = [
+                    ('10.0.0.0', '10.255.255.255'),
+                    ('172.16.0.0', '172.31.255.255'),
+                    ('192.168.0.0', '192.168.255.255')
+                ]
+                ip_int = int.from_bytes(socket.inet_aton(ip_address), byteorder='big')
+                for start, end in private_ranges:
+                    start_int = int.from_bytes(socket.inet_aton(start), byteorder='big')
+                    end_int = int.from_bytes(socket.inet_aton(end), byteorder='big')
+                    if start_int <= ip_int <= end_int:
+                        print_event("Accessiblity :","blue","on_light_grey",end='')
+                        print_event(f" Private","yellow",None)
+                        accessibility="Private"
+                        return "Private"
+                print_event("Accessiblity :","blue","on_light_grey",attrs=['bold'],end='')
+                print_event(f" Public","yellow",None)
+                accessibility="Public"
+                return "Public"
+            except:
+                print_event("Accessiblity :","blue","on_light_grey",end='')
+                print_event(f" Unreachable","yellow",None)
+                accessibility="Unreachable"
+                return "Unreachable"
+        else:
+            print_event("Accessiblity :","blue","on_light_grey",end='')
+            print_event(f" Not Applicable","yellow",None)
+            accessibility="NA"
+            return "NA"
+
+
+    def check_cert(host, port=443):
+        global cipher
+        if is_accessible(record['Name']) == "Public":
+            if args.check_cert:
+                try:
+                    socket.setdefaulttimeout(2)
+                    # Connect to the server and retrieve the SSL/TLS certificate
+                    context = ssl.create_default_context()
+                    with socket.create_connection((host, port)) as sock:
+                        sock.settimeout(2)
+                        with context.wrap_socket(sock, server_hostname=host,) as ssock:
+                            cert = ssock.getpeercert(binary_form=False)
+                            cipher = ssock.cipher()[0]
+
+                    if cert:
+                        current_date = datetime.datetime.utcnow()
+                        not_before = datetime.datetime.strptime(cert['notBefore'], "%b %d %H:%M:%S %Y %Z")
+                        not_after = datetime.datetime.strptime(cert['notAfter'], "%b %d %H:%M:%S %Y %Z")
+                        cn = cert['subject'][0][0][1]
+                        san = ' , '.join([x[1] for x in cert.get('subjectAltName', []) if x[0] == 'DNS'])
+                        print(cipher)
+                        print(san)
+
+                # except ssl.SSLError as e:
+                #     print("SSL Error:", e)
+                #     print("Cipher:", cipher)
+                #     print("san: ", san )
+
+                except ssl.SSLCertVerificationError as p:
+                    print_event("There is mismatch1","red",None)
+                    print(p)
+                    try:
+                        cipher
+                    except:
+                        cipher="NA"
+                        cn="NA"
+                        san="NA"
+                except ssl.SSLError as s:
+                    print_event("There is mismatch2","red",None)
+                    print(s)
+                    try:
+                        cipher
+                    except:
+                        cipher="NA"
+                        cn="NA"
+                        san="NA"
+                    
+                except Exception as e:
+                    print(e)
+                    cipher=str(e)
+                    cn="NA"
+                    san="NA"
+            else:
+                cipher="NA"
+                cn="NA"
+                san="NA"
+        else:
+            cipher="NA"
+            cn="NA"
+            san="NA"
+        print_event("Cipher :","blue","on_light_grey",end='')
+        print_event(f" {cipher}","yellow",None)
+            
+
 
     def is_ip(text):
         try:
@@ -185,7 +298,6 @@ def main():
             if file_location().endswith(('.xls','.xlsx')):
                 return True
             
-
         
     def get_dns_value():
         global dns_value
@@ -223,10 +335,18 @@ def main():
             return "NA"
         
     def append_row_to_sheet():
-        if args.check_dangling:
-            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value()]
+        if args.check_dangling and not args.check_cert:
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value(),accessibility]
+            print_event(sheet_row,"yellow",None)
+        elif args.check_cert and not args.check_dangling:
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value(),accessibility,cipher]
+            print_event(sheet_row,"yellow",None)
+        elif args.check_cert and args.check_dangling:
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value(),accessibility,cipher]
+            print_event(sheet_row,"yellow",None)
         else:
-            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value()]
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value(),accessibility]
+            print_event(sheet_row,"yellow",None)
         sheet.append(sheet_row)
 
    #Function to iterate and check if authorization is complete
@@ -290,39 +410,60 @@ def main():
                         dns_types = list(map(str.upper, args.types))
                         if record['Type'] in dns_types:
                             get_dns_value()
+                            assign_default_values()
+                            print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
+                            check_cert(record['Name'].rstrip('.'))
                             if is_excel():
                                 append_row_to_sheet()
+                            
+                            
                             subdomains.append(record['Name'].rstrip('.'))
                             combined_subdomains.add(record['Name'].rstrip('.'))
-                            print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
+                            
 
                     elif args.exclude and not args.types:
                         regex_pattern = args.exclude
                         if not re.match(regex_pattern, record['Name'].rstrip('.')):
+                            assign_default_values()
                             get_dns_value()
+                            print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
+                            check_cert(record['Name'].rstrip('.'))
                             if is_excel():
                                 append_row_to_sheet()
+                            
+                            
                             subdomains.append(record['Name'].rstrip('.'))
                             combined_subdomains.add(record['Name'].rstrip('.'))
-                            print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
+                            
 
                     elif args.types and args.exclude:
                         dns_types = list(map(str.upper, args.types))
                         regex_pattern = args.exclude
                         if (record['Type'] in dns_types) and (not re.match(regex_pattern, record['Name'].rstrip('.'))):
+                            assign_default_values()
                             get_dns_value()
+                            print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None) 
+                            check_cert(record['Name'].rstrip('.'))
                             if is_excel():
+                                
                                 append_row_to_sheet()
+                            
+                            
                             subdomains.append(record['Name'].rstrip('.'))
                             combined_subdomains.add(record['Name'].rstrip('.'))
-                            print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)              
+                                         
                     else:
+                        assign_default_values()
                         get_dns_value()
-                        if is_excel():
+                        print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
+                        check_cert(record['Name'].rstrip('.'))
+                        if is_excel():     
                             append_row_to_sheet()
+                        
+                        
                         subdomains.append(record['Name'].rstrip('.'))
                         combined_subdomains.add(record['Name'].rstrip('.'))
-                        print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
+                        
         except Exception as e:
             print(f"Failed to get subdomains for zone {zone_id}: {e}")
 
@@ -348,10 +489,14 @@ def main():
     if is_excel():
         workbook = openpyxl.Workbook()
         sheet=workbook.active
-        if args.check_dangling:
-            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value']
+        if args.check_dangling and not args.check_cert:
+            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value','Accessibility']
+        elif args.check_cert and not args.check_dangling:
+            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Record_Value','Accessibility','Cipher']
+        elif args.check_cert and args.check_dangling:
+            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value','Accessibility','Cipher']
         else:
-            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Record_Value']
+            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Record_Value','Accessibility']
         sheet.append(sheet_headers)
         sheet.column_dimensions['A'].width = 15
         sheet.column_dimensions['B'].width = 30
@@ -362,17 +507,21 @@ def main():
         sheet.column_dimensions['G'].width = 12
         sheet.column_dimensions['H'].width = 70
 
-    session =Session()
+
+
+    if args.region:
+        region = args.region
+    else:
+        region = 'us-east-1'
+        
+    session =Session(region_name=region)
 
     ###Skeleton Creation###
 
     #Input details
     start_url = args.start_url
 
-    if args.region:
-        region = args.region
-    else:
-        region = 'us-east-1'
+
 
     #OIDC Connection
     try: 
@@ -497,7 +646,7 @@ def main():
 
     print_event(f"[+] Unique subdomains across all accounts: {len(combined_subdomains)}","yellow","on_blue")
     for subdomain in combined_subdomains:
-        print_event(f"    {subdomain}", color=None,on_color=None)
+        cprint(f"    {subdomain}", color="cyan",on_color=None)
 
         
     if is_text() and combined_subdomains:
