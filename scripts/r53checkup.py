@@ -253,7 +253,7 @@ def main():
                     
 
                 except Exception as e:
-                    validation=f"Failed : {str(e)}"
+                    validation=f"Not_Sure : {str(e)}"
                     cipher_name="NA"
                     cn="NA"
                     san="NA"
@@ -306,7 +306,7 @@ def main():
         
         
         
-        print
+        print()
 
     def is_ip(text):
         try:
@@ -373,41 +373,59 @@ def main():
     
 
     def is_dangling(dns_value):
-        if record['Type'] == 'CNAME' or is_alias:
-            try:
-                result = dns.resolver.resolve(dns_value)
-                if result:
-                    return "No"
-            except dns.resolver.NXDOMAIN:
-                return "Yes"
-            except dns.resolver.Timeout:
-                return "Time Out"
-            except dns.resolver.NoAnswer:
-                return "No Answwer"
-            except Exception as e:
-                return str(e)
-        else: 
-            return "NA"
+        global is_dangling_var
+        if args.check_dangling:
+            if record['Type'] == 'CNAME' or is_alias:
+                try:
+                    result = dns.resolver.resolve(dns_value)
+                    if result:
+                        is_dangling_var= "No"
+                        print_event("Is_Dangling :","blue","on_light_grey",attrs=['bold'],end='')
+                        print_event(f" {is_dangling_var}","yellow",None)
+                        
+                except dns.resolver.NXDOMAIN:
+                    is_dangling_var="Yes"
+                    print_event("Is_Dangling :","blue","on_light_grey",attrs=['bold'],end='')
+                    print_event(f" {is_dangling_var}","yellow",None)
+                    
+                except dns.resolver.Timeout:
+                    is_dangling_var= "Time Out"
+                    print_event("Is_Dangling :","blue","on_light_grey",attrs=['bold'],end='')
+                    print_event(f" {is_dangling_var}","yellow",None)
+                    
+                except dns.resolver.NoAnswer:
+                    is_dangling_var= "No Answer"
+                    print_event("Is_Dangling :","blue","on_light_grey",attrs=['bold'],end='')
+                    print_event(f" {is_dangling_var}","yellow",None)
+                    
+                except Exception as e:
+                    is_dangling_var=str(e)
+                    print_event("Is_Dangling :","blue","on_light_grey",attrs=['bold'],end='')
+                    print_event(f" {is_dangling_var}","yellow",None)
+            else: 
+                is_dangling_var= "NA"
+                print_event("Is_Dangling :","blue","on_light_grey",attrs=['bold'],end='')
+                print_event(f" {is_dangling_var}","yellow",None)
+                
         
     def append_row_to_sheet():
         if args.check_dangling and not args.check_cert:
-            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value(),accessibility]
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling_var,dns_value,accessibility]
             print_event(sheet_row,"yellow",None)
         elif args.check_cert and not args.check_dangling:
-            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value(),accessibility,validation,cipher_name,cn,san,issue_date,expiry_date]
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,dns_value,accessibility,validation,cipher_name,cn,san,issue_date,expiry_date]
             print_event(sheet_row,"yellow",None)
         elif args.check_cert and args.check_dangling:
-            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value(),accessibility,validation,cipher_name,cn,san,issue_date,expiry_date]
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling_var,dns_value,accessibility,validation,cipher_name,cn,san,issue_date,expiry_date]
             print_event(sheet_row,"yellow",None)
         else:
-            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value(),accessibility]
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,dns_value,accessibility]
             print_event(sheet_row,"yellow",None)
         sheet.append(sheet_row)
 
    #Function to iterate and check if authorization is complete
     def authwait():
         for n in range(1, expires_in // (interval+3)+ 1):
-            
             try:
                 global token
                 token = sso_oidc.create_token(
@@ -419,7 +437,7 @@ def main():
                         "s3:*"
                     ]
                 )
-                sleep(interval)
+                
                 if n>1:
                     print_event("\r[+] Device yet to be authorized in browser, waiting...","yellow",on_color=None)
                     print_event(f"[+] Authorization Successful.","green",on_color=None)
@@ -467,6 +485,7 @@ def main():
                             get_dns_value()
                             assign_default_values()
                             print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
+                            is_dangling(dns_value)
                             check_cert(record['Name'].rstrip('.'))
                             if is_excel():
                                 append_row_to_sheet()
@@ -482,6 +501,7 @@ def main():
                             assign_default_values()
                             get_dns_value()
                             print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
+                            is_dangling(dns_value)
                             check_cert(record['Name'].rstrip('.'))
                             if is_excel():
                                 append_row_to_sheet()
@@ -498,6 +518,7 @@ def main():
                             assign_default_values()
                             get_dns_value()
                             print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None) 
+                            is_dangling(dns_value)
                             check_cert(record['Name'].rstrip('.'))
                             if is_excel():
                                 
@@ -511,6 +532,7 @@ def main():
                         assign_default_values()
                         get_dns_value()
                         print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
+                        is_dangling(dns_value)
                         check_cert(record['Name'].rstrip('.'))
                         if is_excel():     
                             append_row_to_sheet()
@@ -540,6 +562,9 @@ def main():
     if args.list:
         args.no_verbose=True
         
+    def set_column_dimension(header_name,width):
+        if header_name in sheet_headers:
+            sheet.column_dimensions[openpyxl.utils.get_column_letter(sheet_headers.index(header_name)+1)].width = width
 
     if is_excel():
         workbook = openpyxl.Workbook()
@@ -549,18 +574,29 @@ def main():
         elif args.check_cert and not args.check_dangling:
             sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Record_Value','Accessibility','Cert_Validation','Cert_Cipher','Cert_CN','Cert_SAN','Cert_Issue_Date','Cert_Expirty_Date']
         elif args.check_cert and args.check_dangling:
-            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value','Accessibility''Cert_Validation','Cert_Cipher','Cert_CN','Cert_SAN','Cert_Issue_Date','Cert_Expirty_Date']
+            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value','Accessibility','Cert_Validation','Cert_Cipher','Cert_CN','Cert_SAN','Cert_Issue_Date','Cert_Expirty_Date']
         else:
             sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Record_Value','Accessibility']
         sheet.append(sheet_headers)
-        sheet.column_dimensions['A'].width = 15
-        sheet.column_dimensions['B'].width = 30
-        sheet.column_dimensions['C'].width = 15
-        sheet.column_dimensions['D'].width = 40
-        sheet.column_dimensions['E'].width = 12
-        sheet.column_dimensions['F'].width = 12
-        sheet.column_dimensions['G'].width = 12
-        sheet.column_dimensions['H'].width = 70
+
+        set_column_dimension('Account_Id',15)
+        set_column_dimension('Zone_Name',30)
+        set_column_dimension('DNSSEC_Status',15)
+        set_column_dimension('Record_Name',45)
+        set_column_dimension('Record_Type',12)
+        set_column_dimension('Is_Alias',10)
+        set_column_dimension('Is_Dangling',10)
+        set_column_dimension('Record_Value',70)
+        set_column_dimension('Accessibility',15)
+        set_column_dimension('Cert_Validation',20)
+        set_column_dimension('Cert_Cipher',20)
+        set_column_dimension('Cert_CN',20)
+        set_column_dimension('Cert_SAN',30)
+        set_column_dimension('Cert_Issue_Date',20)
+        set_column_dimension('Cert_Expirty_Date',20)
+        
+
+
 
 
 
@@ -612,7 +648,7 @@ def main():
     device_code = device_authorization['deviceCode']
     expires_in = device_authorization['expiresIn']
     interval = device_authorization['interval']
-    sleep(10)
+    sleep(7)
     print_event(f"\r[+] Please authorize only if ********* matches the code on your browser screen.","yellow",on_color=None)
 
     webbrowser.open(url, autoraise=True)
@@ -720,10 +756,18 @@ def main():
             cell.font = header_font
             cell.fill = header_fill
 
-        for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=7, max_col=7):
-            for cell in row:
-                if cell.value == "Yes":
-                    cell.font = Font(color="FF0000")  # Red font color
+
+        if 'Is_Dangling' in sheet_headers:
+            for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=int('Is_Dangling'.index(sheet_headers)+1), max_col=int('Is_Dangling'.index(sheet_headers)+1)):
+                for cell in row:
+                    if cell.value == "Yes":
+                        cell.font = Font(color="FF0000")  # Red font color
+                        
+        if 'Cert_Validation' in sheet_headers:
+            for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=int('Cert_Validation'.index(sheet_headers)+1), max_col=int('Cert_Validation'.index(sheet_headers)+1)):
+                for cell in row:
+                    if cell.value == "Failed : Host Mismatch":
+                        cell.font = Font(color="FF0000") 
         workbook.save(file_location())
         print_event(f"\n[+] All data has been saved in excel format in {file_location()}","yellow",on_color=None)
 

@@ -13,8 +13,11 @@ import ipaddress
 import dns.resolver #pip3 install dnspython
 import ssl
 import socket
-import datetime
+from datetime import datetime
 import pkg_resources
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+
 
 
 def main():
@@ -48,7 +51,6 @@ def main():
     ver=f"""{' '*53}v {version}\n"""
     
     try:
-        print()
         cprint(banner,"cyan",attrs=['bold'], file=sys.stderr)
         cprint(ver,"magenta",attrs=['bold'], file=sys.stderr)
     except:
@@ -154,104 +156,157 @@ def main():
 #Some important functions
     def is_accessible(hostname):
         global accessibility
-        if ("acm-validations.aws" not in get_dns_value()) and ( record['Type']=='CNAME' or record['Type']=='A' or record['Type']=='AAAA'):
-            try:
-                ip_address = socket.gethostbyname(hostname)
-            
-                private_ranges = [
-                    ('10.0.0.0', '10.255.255.255'),
-                    ('172.16.0.0', '172.31.255.255'),
-                    ('192.168.0.0', '192.168.255.255')
-                ]
-                ip_int = int.from_bytes(socket.inet_aton(ip_address), byteorder='big')
-                for start, end in private_ranges:
-                    start_int = int.from_bytes(socket.inet_aton(start), byteorder='big')
-                    end_int = int.from_bytes(socket.inet_aton(end), byteorder='big')
-                    if start_int <= ip_int <= end_int:
-                        print_event("Accessiblity :","blue","on_light_grey",end='')
-                        print_event(f" Private","yellow",None)
-                        accessibility="Private"
-                        return "Private"
+        if args.output or args.check_cert:
+            if ("acm-validations.aws" not in get_dns_value()) and ( record['Type']=='CNAME' or record['Type']=='A' or record['Type']=='AAAA'):
+                try:
+                    ip_address = socket.gethostbyname(hostname)
+                
+                    private_ranges = [
+                        ('10.0.0.0', '10.255.255.255'),
+                        ('172.16.0.0', '172.31.255.255'),
+                        ('192.168.0.0', '192.168.255.255')
+                    ]
+                    ip_int = int.from_bytes(socket.inet_aton(ip_address), byteorder='big')
+                    for start, end in private_ranges:
+                        start_int = int.from_bytes(socket.inet_aton(start), byteorder='big')
+                        end_int = int.from_bytes(socket.inet_aton(end), byteorder='big')
+                        if start_int <= ip_int <= end_int:
+                            print_event("Accessiblity :","blue","on_light_grey",attrs=['bold'],end='')
+                            print_event(f" Private","yellow",None)
+                            accessibility="Private"
+                            return "Private"
+                    print_event("Accessiblity :","blue","on_light_grey",attrs=['bold'],end='')
+                    print_event(f" Public","yellow",None)
+                    accessibility="Public"
+                    return "Public"
+                except:
+                    print_event("Accessiblity :","blue","on_light_grey",attrs=['bold'],end='')
+                    print_event(f" Unreachable","yellow",None)
+                    accessibility="Unreachable"
+                    return "Unreachable"
+            else:
                 print_event("Accessiblity :","blue","on_light_grey",attrs=['bold'],end='')
-                print_event(f" Public","yellow",None)
-                accessibility="Public"
-                return "Public"
-            except:
-                print_event("Accessiblity :","blue","on_light_grey",end='')
-                print_event(f" Unreachable","yellow",None)
-                accessibility="Unreachable"
-                return "Unreachable"
+                print_event(f" NA","yellow",None)
+                accessibility="NA"
+                return "NA"
         else:
-            print_event("Accessiblity :","blue","on_light_grey",end='')
-            print_event(f" Not Applicable","yellow",None)
             accessibility="NA"
             return "NA"
 
 
     def check_cert(host, port=443):
-        global cipher
-        if is_accessible(record['Name']) == "Public":
-            if args.check_cert:
+        global cipher,cipher_name,san,cn,issue_date,expiry_date,validation
+        if args.check_cert:
+            if is_accessible(record['Name']) == "Public":
+                host = host.rstrip('.')
                 try:
                     socket.setdefaulttimeout(2)
                     # Connect to the server and retrieve the SSL/TLS certificate
                     context = ssl.create_default_context()
+                    context.check_hostname = False
+                    context.verify_mode = ssl.CERT_NONE
+
                     with socket.create_connection((host, port)) as sock:
                         sock.settimeout(2)
-                        with context.wrap_socket(sock, server_hostname=host,) as ssock:
-                            cert = ssock.getpeercert(binary_form=False)
-                            cipher = ssock.cipher()[0]
+                        with context.wrap_socket(sock, server_hostname=host) as ssock:
+                            cert = ssock.getpeercert(binary_form=True)
+                            cipher = ssock.cipher()
+                            cipher_name = str(cipher[0])
 
-                    if cert:
-                        current_date = datetime.datetime.utcnow()
-                        not_before = datetime.datetime.strptime(cert['notBefore'], "%b %d %H:%M:%S %Y %Z")
-                        not_after = datetime.datetime.strptime(cert['notAfter'], "%b %d %H:%M:%S %Y %Z")
-                        cn = cert['subject'][0][0][1]
-                        san = ' , '.join([x[1] for x in cert.get('subjectAltName', []) if x[0] == 'DNS'])
-                        print(cipher)
-                        print(san)
+                    cert_pem = ssl.DER_cert_to_PEM_cert(cert)
+                    cert_obj = x509.load_pem_x509_certificate(cert_pem.encode(), default_backend())
 
-                # except ssl.SSLError as e:
-                #     print("SSL Error:", e)
-                #     print("Cipher:", cipher)
-                #     print("san: ", san )
-
-                except ssl.SSLCertVerificationError as p:
-                    print_event("There is mismatch1","red",None)
-                    print(p)
-                    try:
-                        cipher
-                    except:
-                        cipher="NA"
-                        cn="NA"
-                        san="NA"
-                except ssl.SSLError as s:
-                    print_event("There is mismatch2","red",None)
-                    print(s)
-                    try:
-                        cipher
-                    except:
-                        cipher="NA"
-                        cn="NA"
-                        san="NA"
+                    cn = cert_obj.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
+                    cn=str(cn)
                     
+                    san_raw = cert_obj.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+                    san_raw2 = san_raw.value.get_values_for_type(x509.DNSName)
+                    san_list=list(san_raw2)
+                    san=" , ".join(san_list)
+                    
+                    # Add the CN to the SAN entries for comparison
+                    cn_san_union=[]
+                    cn_san_union.append(cn)
+                    cn_san_union.extend(san_list)
+                    
+                    
+                    
+                    # Check if the provided host matches any SAN or CN entry
+                    if len(host.split('.')) > 2:
+                        wildcard_host = re.sub(r'^[^.]+', '*', host)
+                        host_list = [host, wildcard_host]
+                    else:
+                        host_list = [host]
+
+                    host_set = set(host_list)
+
+                    # Check for intersection between host_set and san_entries
+                    if host_set.intersection(set(cn_san_union)):
+                        validation="Passed"
+                    else:
+                        validation="Failed : Host Mismatch"
+
+                        # Get issue and expiry dates
+                    issue_date = str(cert_obj.not_valid_before)
+                    expiry_date = str(cert_obj.not_valid_after)
+                    log_cert_details()
+                    
+
                 except Exception as e:
-                    print(e)
-                    cipher=str(e)
+                    validation=f"Failed : {str(e)}"
+                    cipher_name="NA"
                     cn="NA"
                     san="NA"
+                    issue_date="NA"
+                    expiry_date="NA"
+                    log_cert_details()
             else:
-                cipher="NA"
+                cipher_name="NA"
                 cn="NA"
                 san="NA"
+                validation="NA"
+                issue_date="NA"
+                expiry_date="NA"
+                log_cert_details()
         else:
-            cipher="NA"
+            cipher_name="NA"
             cn="NA"
             san="NA"
-        print_event("Cipher :","blue","on_light_grey",end='')
-        print_event(f" {cipher}","yellow",None)
+            validation="NA"
+            issue_date="NA"
+            expiry_date="NA"
+        
             
 
+    def log_cert_details():
+        
+        print_event("Cipher :","blue","on_light_grey",attrs=['bold'],end='')
+        print_event(f" {cipher_name}","yellow",None)
+        
+        print_event("CN :","blue","on_light_grey",attrs=['bold'],end='')
+        print_event(f" {cn}","yellow",None)
+        
+        print_event("SAN :","blue","on_light_grey",attrs=['bold'],end='')
+        print_event(f" {san}","yellow",None)
+        
+        print_event("Issue_Date :","blue","on_light_grey",attrs=['bold'],end='')
+        print_event(f" {issue_date}","yellow",None)
+        
+        print_event("Expiry_Date :","blue","on_light_grey",attrs=['bold'],end='')
+        print_event(f" {expiry_date}","yellow",None)
+        
+        print_event("Validation :","blue","on_light_grey",attrs=['bold'],end='')
+        if validation == "Passed":
+            print_event(f" {validation}","green",None)
+        elif "Failed" in validation:
+            print_event(f" {validation}","red",None)
+        else:
+            print_event(f" {validation}","yellow",None)
+        
+        
+        
+        
+        print
 
     def is_ip(text):
         try:
@@ -339,10 +394,10 @@ def main():
             sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value(),accessibility]
             print_event(sheet_row,"yellow",None)
         elif args.check_cert and not args.check_dangling:
-            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value(),accessibility,cipher]
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value(),accessibility,validation,cipher_name,cn,san,issue_date,expiry_date]
             print_event(sheet_row,"yellow",None)
         elif args.check_cert and args.check_dangling:
-            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value(),accessibility,cipher]
+            sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,is_dangling(dns_value),get_dns_value(),accessibility,validation,cipher_name,cn,san,issue_date,expiry_date]
             print_event(sheet_row,"yellow",None)
         else:
             sheet_row=[account_id,zone_name,dnssec_status,record['Name'].rstrip('.'),record['Type'],is_alias,get_dns_value(),accessibility]
@@ -492,9 +547,9 @@ def main():
         if args.check_dangling and not args.check_cert:
             sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value','Accessibility']
         elif args.check_cert and not args.check_dangling:
-            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Record_Value','Accessibility','Cipher']
+            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Record_Value','Accessibility','Cert_Validation','Cert_Cipher','Cert_CN','Cert_SAN','Cert_Issue_Date','Cert_Expirty_Date']
         elif args.check_cert and args.check_dangling:
-            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value','Accessibility','Cipher']
+            sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Is_Dangling','Record_Value','Accessibility''Cert_Validation','Cert_Cipher','Cert_CN','Cert_SAN','Cert_Issue_Date','Cert_Expirty_Date']
         else:
             sheet_headers= ['Account_Id', 'Zone_Name','DNSSEC_Status','Record_Name', 'Record_Type','Is_Alias','Record_Value','Accessibility']
         sheet.append(sheet_headers)
