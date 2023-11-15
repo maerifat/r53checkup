@@ -755,19 +755,26 @@ def main():
         for cell in sheet[1]:
             cell.font = header_font
             cell.fill = header_fill
+            
+            
 
 
-        if 'Is_Dangling' in sheet_headers:
-            for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=int('Is_Dangling'.index(sheet_headers)+1), max_col=int('Is_Dangling'.index(sheet_headers)+1)):
-                for cell in row:
-                    if cell.value == "Yes":
-                        cell.font = Font(color="FF0000")  # Red font color
-                        
-        if 'Cert_Validation' in sheet_headers:
-            for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=int('Cert_Validation'.index(sheet_headers)+1), max_col=int('Cert_Validation'.index(sheet_headers)+1)):
-                for cell in row:
-                    if cell.value == "Failed : Host Mismatch":
-                        cell.font = Font(color="FF0000") 
+        try:
+            if 'Is_Dangling' in sheet_headers:
+                is_dangling_index = sheet_headers.index('Is_Dangling') + 1  # Adding 1 to match Excel column index
+                for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=is_dangling_index, max_col=is_dangling_index):
+                    for cell in row:
+                        if cell.value == "Yes":
+                            cell.font = Font(color="FF0000") # Red font color
+                            
+            if 'Cert_Validation' in sheet_headers:
+                cert_validation_index = sheet_headers.index('Cert_Validation') + 1  # Adding 1 to match Excel column index
+                for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=cert_validation_index, max_col=cert_validation_index):
+                    for cell in row:
+                        if cell.value == "Failed : Host Mismatch":
+                            cell.font = Font(color="FF0000")
+        except Exception as e:
+            print(e) 
         workbook.save(file_location())
         print_event(f"\n[+] All data has been saved in excel format in {file_location()}","yellow",on_color=None)
 
