@@ -70,8 +70,14 @@ pip3 install  r53checkup
   ```python
    r53checkup -u <SSO Start URL> -cd -o <Output FileLocation> 
 
+- check if the certificates served are valid.
+  - If you want to check whether the certificates served by dns record names are valid, use --check-cert/-cc. Use output filename extension as xlsx along with it. Apart from certificate host name validation, it will also save Cipher,CN,SAN,Issue_Date,Expiry_Date in output file. Example: 
+    - _ r53checkup -u https://d-1010ad440.awsapps.com/start -cd -cc -o myrecords.xlsx_
+  ```python
+   r53checkup -u <SSO Start URL> -cd -cc -o <Output FileLocation> 
+
 - Disable verbose.
-  - If you want to check whether the DNS record is dangling or not, use --no-verbose/-nc . Example: 
+  - If you want to disable the verbose, use --no-verbose/-nc . Example: 
     - _ r53checkup -u https://d-1010ad440.awsapps.com/start -cd -o myrecords.xlsx -nc_
   ```python
    r53checkup -u <SSO Start URL> -cd -o <Output FileLocation> -nc 
