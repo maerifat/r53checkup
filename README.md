@@ -19,8 +19,14 @@ pip3 install  r53checkup
 
 ## Usage
 
-` r53checkup -u https://d-1010ad440.awsapps.com/start`
-` r53checkup -u https://d-1010ad440.awsapps.com/start -cd -o myrecords.xlsx  `
+```bash
+r53checkup -u https://d-1010ad440.awsapps.com/start
+```
+
+```bash 
+r53checkup -u https://d-1010ad440.awsapps.com/start -cd -o myrecords.xlsx
+```
+
 ```bash
  r53checkup -u https://d-1010ad440.awsapps.com/start -a 144313609872,330936112098,692902471034 -t a,cname,aaaa -e "^_.*|.*_(domainkey|dkim).*" -cd -o myrecords.xlsx 
 ```
