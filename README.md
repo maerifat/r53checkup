@@ -17,7 +17,7 @@ pip3 install  r53checkup
 
 
 
-## Usage
+## Usage (using -o flag is recommended, to get results in excel format)
 
 ```bash
 r53checkup -u https://d-1010ad440.awsapps.com/start
