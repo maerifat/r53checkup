@@ -42,55 +42,55 @@ r53checkup -u https://d-1010ad440.awsapps.com/start -cd -o myrecords.xlsx
 
 - Run accross all accounts
   - With out using --accounts/-a, the tool will gather all accounts you have privilege to and fetch details of dns records. . Example:  
-    - _ r53checkup -u https://d-1010ad440.awsapps.com/start_
+    - _r53checkup -u https://d-1010ad440.awsapps.com/start_
   ```python
    r53checkup -u <SSO Start URL>
   
 - Run accross selective account[s].
   - To get results from selective accounts, use --accounts/-a. Multiple accounts can be selected separated by comma. Example:
-    - _ r53checkup -u https://d-1010ad440.awsapps.com/start -a 144313609872,330936112098,692902471034_
+    - _r53checkup -u https://d-1010ad440.awsapps.com/start -a 144313609872,330936112098,692902471034_
   ```python
    r53checkup -u <SSO Start URL> -a <Account IDs> 
 
 - Filter record types.
   - To get desired DNS record types only, use -types/-t. Multiple types can be selected separated by comma. Example:
-    - _ r53checkup -u https://d-1010ad440.awsapps.com/start -t cname,a,aaaa_
+    - _r53checkup -u https://d-1010ad440.awsapps.com/start -t cname,a,aaaa_
   ```python
    r53checkup -u <SSO Start URL> -t <Record Type> 
 
 - Exclude record names using regex.
   - If you want to filterout the undesired subdomains(record names) like containing '\_domainkey' or '\_dkim' or records starting with '\_', you can select regex after --exclude/-e. Example:
-    - _ r53checkup -u https://d-1010ad440.awsapps.com/start -e "^\_.\*|.\*\_(domainkey|dkim).\*"_
+    - _r53checkup -u https://d-1010ad440.awsapps.com/start -e "^\_.\*|.\*\_(domainkey|dkim).\*"_
   ```python
    r53checkup -u <SSO Start URL> -e <Regex> 
 
 - Save output to a file.
   - If you want to save the output to a file, use --output/-o. You have two format options xlsx(recommended) and txt. Format is recognised from the filename extension. Txt extension is recommended only in case you want to store subdomains in a text file, which can be later used to feed other tools for reconnaissance . Example:
-    - _ r53checkup -u https://d-1010ad440.awsapps.com/start -o myrecords.xlsx_
+    - _r53checkup -u https://d-1010ad440.awsapps.com/start -o myrecords.xlsx_
   ```python
    r53checkup -u <SSO Start URL> -o <Output FileLocation> 
 
 - check if the record is dangling.
   - If you want to check whether the DNS record is dangling or not, use --check-dangling/-cd . Use output filename extension as xlsx along with it. Example: 
-    - _ r53checkup -u https://d-1010ad440.awsapps.com/start -cd -o myrecords.xlsx_
+    - _r53checkup -u https://d-1010ad440.awsapps.com/start -cd -o myrecords.xlsx_
   ```python
    r53checkup -u <SSO Start URL> -cd -o <Output FileLocation> 
 
 - check if the certificates served are valid.
   - If you want to check whether the certificates served by dns record names are valid, use --check-cert/-cc. Use output filename extension as xlsx along with it. Apart from certificate host name validation, it will also save Cipher,CN,SAN,Issue_Date,Expiry_Date in output file. Example: 
-    - _ r53checkup -u https://d-1010ad440.awsapps.com/start -cd -cc -o myrecords.xlsx_
+    - _r53checkup -u https://d-1010ad440.awsapps.com/start -cd -cc -o myrecords.xlsx_
   ```python
    r53checkup -u <SSO Start URL> -cd -cc -o <Output FileLocation> 
 
 - Disable verbose.
   - If you want to disable the verbose, use --no-verbose/-nc . Example: 
-    - _ r53checkup -u https://d-1010ad440.awsapps.com/start -cd -o myrecords.xlsx -nc_
+    - _r53checkup -u https://d-1010ad440.awsapps.com/start -cd -o myrecords.xlsx -nc_
   ```python
    r53checkup -u <SSO Start URL> -cd -o <Output FileLocation> -nc 
 
 - List unique subdomains.
   - If you want to only list unique subdomains, use --list/-l . This is helpful while combining it with other tools using pipe. Example: 
-    - _ r53checkup -u https://d-1010ad440.awsapps.com/start -l_
+    - _r53checkup -u https://d-1010ad440.awsapps.com/start -l_
   ```python
    r53checkup -u <SSO Start URL>  -l 
 
