@@ -156,7 +156,7 @@ def main():
 #Some important functions
     def is_accessible(hostname):
         global accessibility
-        if args.output or args.check_cert:
+        if args.output or args.check_cert or args.check_dangling:
             if ("acm-validations.aws" not in get_dns_value()) and ( record['Type']=='CNAME' or record['Type']=='A' or record['Type']=='AAAA'):
                 try:
                     ip_address = socket.gethostbyname(hostname)
@@ -174,24 +174,24 @@ def main():
                             print_event("Accessiblity :","blue","on_light_grey",attrs=['bold'],end='')
                             print_event(f" Private","yellow",None)
                             accessibility="Private"
-                            return "Private"
+                            return accessibility
                     print_event("Accessiblity :","blue","on_light_grey",attrs=['bold'],end='')
                     print_event(f" Public","yellow",None)
                     accessibility="Public"
-                    return "Public"
+                    return accessibility
                 except:
                     print_event("Accessiblity :","blue","on_light_grey",attrs=['bold'],end='')
                     print_event(f" Unreachable","yellow",None)
                     accessibility="Unreachable"
-                    return "Unreachable"
+                    return accessibility
             else:
                 print_event("Accessiblity :","blue","on_light_grey",attrs=['bold'],end='')
                 print_event(f" NA","yellow",None)
                 accessibility="NA"
-                return "NA"
+                return accessibility
         else:
             accessibility="NA"
-            return "NA"
+            return accessibility
 
 
     def check_cert(host, port=443):
@@ -375,6 +375,7 @@ def main():
     def is_dangling(dns_value):
         global is_dangling_var
         if args.check_dangling:
+            is_accessible(dns_value)
             if record['Type'] == 'CNAME' or is_alias:
                 try:
                     result = dns.resolver.resolve(dns_value)
@@ -485,8 +486,10 @@ def main():
                             get_dns_value()
                             assign_default_values()
                             print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
-                            is_dangling(dns_value)
-                            check_cert(record['Name'].rstrip('.'))
+                            if args.check_dangling:
+                                is_dangling(dns_value)
+                            if args.check_cert:
+                                check_cert(record['Name'].rstrip('.'))
                             if is_excel():
                                 append_row_to_sheet()
                             
@@ -501,7 +504,8 @@ def main():
                             assign_default_values()
                             get_dns_value()
                             print_event(f"{record['Type']} : {record['Name']} ==> {get_dns_value()}","magenta",on_color=None)
-                            is_dangling(dns_value)
+                            if args.check_dangling:
+                                is_dangling(dns_value)
                             check_cert(record['Name'].rstrip('.'))
                             if is_excel():
                                 append_row_to_sheet()
